@@ -482,14 +482,13 @@ export async function buildModelsList(kindFilter, options = {}) {
           object: "model",
           owned_by: outputAlias,
         };
-        // Live-catalog resolvers (kiro/qoder/github/clinepass) mostly only return
-        // { id, name } — no per-model capability data. Fall back to the resolved
-        // kind (custom, live, or the registry's own `kind`) so a typed image/tts
-        // model is not reported as text-only, then to the same pattern-matched
-        // capabilities the dashboard uses (useModelCaps.js) so dynamically
-        // discovered LLM models still surface vision/reasoning/search/tools.
+        // Live resolvers mostly omit capabilities. Alibaba's static fallback
+        // still needs the registry kind for image and TTS models.
+        const capabilityKind = customKind
+          || liveKind
+          || (providerId === "alitp-intl" ? staticModelKindById.get(modelId) : null);
         const caps = liveCapabilitiesById.get(modelId)
-          || capabilitiesFromServiceKind(kind)
+          || capabilitiesFromServiceKind(capabilityKind)
           || (kind === LLM_KIND ? getCapabilitiesForModel(providerId, modelId) : null);
         if (caps) model.capabilities = caps;
         // Token limits under the snake_case names the OpenAI/OpenRouter

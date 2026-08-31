@@ -152,9 +152,11 @@ describe("Alibaba Token Plan provider", () => {
       return body.reasoning_effort;
     };
     const none = { mode: "none" };
+    const minimal = { mode: "level", level: "minimal" };
     const max = { mode: "level", level: "max" };
     const ultra = { mode: "level", level: "ultra" };
     expect(apply("deepseek-v4-pro", none)).toBe("low");
+    expect(apply("deepseek-v4-pro", minimal)).toBe("low");
     expect(apply("qwen3.7-max", max)).toBe("xhigh");
     expect(apply("qwen3.8-max", max)).toBe("max");
     expect(apply("qwen3.8-max", ultra)).toBe("max");
@@ -176,7 +178,7 @@ describe("Alibaba Token Plan provider", () => {
     expect(claudeBody.thinking).toMatchObject({ type: "enabled" });
     expect(claudeBody.thinking.budget_tokens).toBeGreaterThan(0);
     expect(claudeBody.reasoning_effort).toBeUndefined();
-    // none on a cannot-disable model → minimal thinking at the Anthropic floor.
+    // Unsupported minimal effort maps to this provider's lowest declared level.
     const offBody = {};
     applyThinking(FORMATS.CLAUDE, "deepseek-v4-pro", offBody, "alitp-intl", { mode: "none" }, {
       runtimeTransport: { format: "claude", thinkingFormat: "claude-budget" },

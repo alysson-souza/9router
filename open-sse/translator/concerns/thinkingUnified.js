@@ -147,13 +147,7 @@ function toLevel(cfg) {
 }
 
 function normalizeOpenAILevel(level, supportedLevels) {
-  if (level !== "max" && level !== "ultra") {
-    // thinkingCanDisable:false clamps none→minimal; use the lowest supported level
-    if ((level === "minimal" || level === "none") && supportedLevels?.length && !supportedLevels.includes(level)) {
-      return supportedLevels[0];
-    }
-    return level;
-  }
+  if (level !== "max" && level !== "ultra") return level;
   if (supportedLevels?.includes(level)) return level;
   if (level === "ultra" && supportedLevels?.includes("max")) return "max";
   return "xhigh";
@@ -242,7 +236,16 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
   const none = cfg.mode === "none";
   const canDisable = caps.thinkingCanDisable !== false;
   // Model cannot disable thinking → clamp "none" to minimal effort instead.
-  const eff = none && !canDisable ? { mode: "level", level: "minimal" } : cfg;
+  let eff = none && !canDisable ? { mode: "level", level: "minimal" } : cfg;
+  if (
+    caps.thinkingClampUnsupported
+    && eff.mode === "level"
+    && (eff.level === "minimal" || eff.level === "none")
+    && supportedLevels?.length
+    && !supportedLevels.includes(eff.level)
+  ) {
+    eff = { ...eff, level: supportedLevels[0] };
+  }
 
   switch (fmt) {
     case "openai": {
@@ -264,9 +267,7 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
     case "claude-budget": {
       if (none && canDisable) { body.thinking = { type: "disabled" }; break; }
       const budget = toBudget(eff, caps.thinkingRange);
-      // Anthropic requires budget_tokens >= 1024.
-      const floored = Number.isFinite(budget) && budget > 0 ? Math.max(budget, 1024) : budget;
-      body.thinking = floored === -1 ? { type: "enabled" } : { type: "enabled", budget_tokens: floored || 8192 };
+      body.thinking = budget === -1 ? { type: "enabled" } : { type: "enabled", budget_tokens: budget || 8192 };
       break;
     }
     case "gemini-level": {
