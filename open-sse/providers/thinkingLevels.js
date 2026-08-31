@@ -33,6 +33,9 @@ const FORMAT_LEVELS = {
 
 const CODEX_GPT_5_6_LEVELS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
+// Alibaba Token Plan enums probed from upstream 400 messages — the OpenAI enum plus "max".
+const ALITP_INTL_LEVELS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
+
 // Model-name pattern overrides (glob, first match wins) — more precise than format default.
 const PATTERN_THINKING = [
   { provider: "codex", pattern: "*gpt-5.6-sol*", levels: [...CODEX_GPT_5_6_LEVELS, "ultra"] },
@@ -46,6 +49,12 @@ const PATTERN_THINKING = [
   { provider: "codebuddy-cn", pattern: "deepseek-v4*", levels: ["low", "high", "xhigh"] },
   { provider: "codebuddy-cn", pattern: "hy3*",         levels: ["low", "high"] },
   { provider: "codebuddy-cn", pattern: "hy4*",         levels: ["high"] },
+  { provider: "alitp-intl", pattern: "qwen3.8-*",              levels: ALITP_INTL_LEVELS },
+  { provider: "alitp-intl", pattern: "glm-5.2",                levels: ALITP_INTL_LEVELS },
+  { provider: "alitp-intl", pattern: "deepseek-v4-pro-0813",   levels: ALITP_INTL_LEVELS },
+  { provider: "alitp-intl", pattern: "deepseek-v4-flash-0731", levels: ALITP_INTL_LEVELS },
+  // deepseek-v4-pro also rejects minimal, and getThinkingLevels only filters "none".
+  { provider: "alitp-intl", pattern: "deepseek-v4-pro",        levels: ["low", "medium", "high", "xhigh", "max"] },
 ];
 
 // Returns valid thinking levels for a model, or null when the model has no reasoning.

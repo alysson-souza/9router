@@ -107,7 +107,13 @@ export const captureThinking = extractThinking;
 
 const NATIVE_ONLY_FORMATS = new Set(["gemini-level", "gemini-budget", "claude-budget", "claude-adaptive", "kiro"]);
 
-function resolveFormat(targetFormat, model, provider) {
+// Runtime transport override > provider override > capability > target format.
+// Multi-transport providers accept a different thinking shape per surface.
+// A capability's native-only format is skipped on an OpenAI wire, so a Gemini
+// model served by an OpenAI-compatible provider still gets reasoning_effort.
+function resolveFormat(targetFormat, model, provider, credentials = null) {
+  const transportFmt = credentials?.runtimeTransport?.thinkingFormat;
+  if (transportFmt) return transportFmt;
   const providerFmt = provider ? PROVIDERS[provider]?.thinkingFormat : null;
   if (providerFmt) return providerFmt;
   const caps = getCapabilitiesForModel(provider, model);
@@ -141,7 +147,13 @@ function toLevel(cfg) {
 }
 
 function normalizeOpenAILevel(level, supportedLevels) {
-  if (level !== "max" && level !== "ultra") return level;
+  if (level !== "max" && level !== "ultra") {
+    // thinkingCanDisable:false clamps none→minimal; use the lowest supported level
+    if ((level === "minimal" || level === "none") && supportedLevels?.length && !supportedLevels.includes(level)) {
+      return supportedLevels[0];
+    }
+    return level;
+  }
   if (supportedLevels?.includes(level)) return level;
   if (level === "ultra" && supportedLevels?.includes("max")) return "max";
   return "xhigh";
@@ -252,7 +264,9 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
     case "claude-budget": {
       if (none && canDisable) { body.thinking = { type: "disabled" }; break; }
       const budget = toBudget(eff, caps.thinkingRange);
-      body.thinking = budget === -1 ? { type: "enabled" } : { type: "enabled", budget_tokens: budget || 8192 };
+      // Anthropic requires budget_tokens >= 1024.
+      const floored = Number.isFinite(budget) && budget > 0 ? Math.max(budget, 1024) : budget;
+      body.thinking = floored === -1 ? { type: "enabled" } : { type: "enabled", budget_tokens: floored || 8192 };
       break;
     }
     case "gemini-level": {
@@ -342,10 +356,10 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
 }
 
 // Public entry: normalize thinking for the resolved target format.
-// Mutates and returns body. No-op when model has no reasoning capability.
-// `intent` is a pre-captured config (from captureThinking on the original body);
-// falls back to extracting from the current body when omitted.
-export function applyThinking(targetFormat, model, body, provider = null, intent = undefined) {
+// `credentials.runtimeTransport` selects the per-transport thinking format.
+export function applyThinking(targetFormat, model, body, provider = null, intent = undefined, credentials = null) {
+  if (!body || typeof body !== "object") return body;
+
   if (!body || typeof body !== "object") return body;
 
   const { cleanModel, override } = parseSuffix(model);
@@ -359,7 +373,7 @@ export function applyThinking(targetFormat, model, body, provider = null, intent
   }
   if (!cfg) return body;
 
-  const fmt = resolveFormat(targetFormat, cleanModel, provider);
+  const fmt = resolveFormat(targetFormat, cleanModel, provider, credentials);
   const supportedLevels = getThinkingLevels(provider, cleanModel);
   stripAll(body);
   applyFormat(fmt, body, cfg, caps, supportedLevels);
