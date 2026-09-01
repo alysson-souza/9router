@@ -145,18 +145,21 @@ describe("Alibaba Token Plan provider", () => {
     }
   });
 
-  it("clamps unsupported levels to each model's enum", () => {
-    const apply = (model, intent, credentials) => {
+  it("sends the lowest accepted effort when thinking cannot be disabled", () => {
+    const apply = (model, intent) => {
       const body = {};
-      applyThinking(FORMATS.OPENAI, model, body, "alitp-intl", intent, credentials);
+      applyThinking(FORMATS.OPENAI, model, body, "alitp-intl", intent);
       return body.reasoning_effort;
     };
     const none = { mode: "none" };
     const minimal = { mode: "level", level: "minimal" };
     const max = { mode: "level", level: "max" };
     const ultra = { mode: "level", level: "ultra" };
+    // Upstream: "'reasoning_effort' must be one of: 'low', 'medium', 'high', 'xhigh', 'max'".
     expect(apply("deepseek-v4-pro", none)).toBe("low");
-    expect(apply("deepseek-v4-pro", minimal)).toBe("low");
+    // An explicitly requested level is forwarded for upstream to validate.
+    expect(apply("deepseek-v4-pro", minimal)).toBe("minimal");
+    expect(apply("qwen3.8-max", none)).toBe("none");
     expect(apply("qwen3.7-max", max)).toBe("xhigh");
     expect(apply("qwen3.8-max", max)).toBe("max");
     expect(apply("qwen3.8-max", ultra)).toBe("max");
@@ -178,12 +181,13 @@ describe("Alibaba Token Plan provider", () => {
     expect(claudeBody.thinking).toMatchObject({ type: "enabled" });
     expect(claudeBody.thinking.budget_tokens).toBeGreaterThan(0);
     expect(claudeBody.reasoning_effort).toBeUndefined();
-    // Unsupported minimal effort maps to this provider's lowest declared level.
+    // Upstream accepts budget_tokens 512 and 1023 on this surface (probed), so
+    // the minimal effort budget is sent unchanged.
     const offBody = {};
     applyThinking(FORMATS.CLAUDE, "deepseek-v4-pro", offBody, "alitp-intl", { mode: "none" }, {
       runtimeTransport: { format: "claude", thinkingFormat: "claude-budget" },
     });
-    expect(offBody.thinking).toEqual({ type: "enabled", budget_tokens: 1024 });
+    expect(offBody.thinking).toEqual({ type: "enabled", budget_tokens: 512 });
   });
 
   it("claims web search on every chat model (Responses surface)", () => {

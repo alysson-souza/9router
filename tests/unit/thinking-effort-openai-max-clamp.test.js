@@ -57,4 +57,10 @@ describe("provider-specific thinking rules", () => {
     );
     expect(out.thinking).toEqual({ type: "enabled", budget_tokens: 512 });
   });
+
+  it("keeps the minimal clamp for other cannot-disable openai-format models", () => {
+    const body = {};
+    applyThinking(FORMATS.OPENAI, "minimaxai/minimax-m3", body, "nvidia", { mode: "none" });
+    expect(body.reasoning_effort).toBe("minimal");
+  });
 });

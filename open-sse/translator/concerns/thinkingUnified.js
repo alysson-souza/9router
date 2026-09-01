@@ -236,21 +236,15 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
   const none = cfg.mode === "none";
   const canDisable = caps.thinkingCanDisable !== false;
   // Model cannot disable thinking → clamp "none" to minimal effort instead.
-  let eff = none && !canDisable ? { mode: "level", level: "minimal" } : cfg;
-  if (
-    caps.thinkingClampUnsupported
-    && eff.mode === "level"
-    && (eff.level === "minimal" || eff.level === "none")
-    && supportedLevels?.length
-    && !supportedLevels.includes(eff.level)
-  ) {
-    eff = { ...eff, level: supportedLevels[0] };
-  }
+  const eff = none && !canDisable ? { mode: "level", level: "minimal" } : cfg;
 
   switch (fmt) {
     case "openai": {
       if (none && canDisable) { body.reasoning_effort = "none"; break; }
-      const level = toLevel(eff);
+      // Cannot disable → send the model's lowest selectable effort. That is
+      // "minimal" for most models and "low" where upstream rejects minimal
+      // (alitp-intl/deepseek-v4-pro; see thinkingLevels.js).
+      const level = none ? (supportedLevels?.[0] || "minimal") : toLevel(eff);
       if (level) body.reasoning_effort = normalizeOpenAILevel(level, supportedLevels);
       break;
     }

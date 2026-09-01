@@ -221,7 +221,7 @@ export const PROVIDER_CAPABILITIES = {
     "qwen3.7-plus":            { vision: true, videoInput: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 131072 },
     "qwen3.6-flash":           { vision: true, videoInput: true, reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 65536 },
     "glm-5.2":                 { reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1048576, maxOutput: 131072 },
-    "deepseek-v4-pro":         { reasoning: true, search: true, thinkingCanDisable: false, thinkingClampUnsupported: true, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 393216 },
+    "deepseek-v4-pro":         { reasoning: true, search: true, thinkingCanDisable: false, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 393216 },
     "deepseek-v4-pro-0813":    { reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 393216 },
     "deepseek-v4-flash-0731":  { reasoning: true, search: true, thinkingFormat: "openai", contextWindow: 1000000, maxOutput: 393216 },
     "wan2.7-image":            { imageOutput: true, tools: false },
