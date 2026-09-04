@@ -36,6 +36,13 @@ const CODEX_GPT_5_6_LEVELS = ["none", "minimal", "low", "medium", "high", "xhigh
 // Alibaba Token Plan enums probed from upstream 400 messages — the OpenAI enum plus "max".
 const ALITP_INTL_LEVELS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
+// Ascending effort ladder, for floor comparisons.
+const LEVEL_ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"];
+
+// Providers that 400 on a reasoning_effort outside the model's enum, so a level below
+// the floor must be raised rather than forwarded.
+const STRICT_LEVEL_PROVIDERS = new Set(["alitp-intl"]);
+
 // Model-name pattern overrides (glob, first match wins) — more precise than format default.
 const PATTERN_THINKING = [
   { provider: "codex", pattern: "*gpt-5.6-sol*", levels: [...CODEX_GPT_5_6_LEVELS, "ultra"] },
@@ -53,7 +60,7 @@ const PATTERN_THINKING = [
   { provider: "alitp-intl", pattern: "glm-5.2",                levels: ALITP_INTL_LEVELS },
   { provider: "alitp-intl", pattern: "deepseek-v4-pro-0813",   levels: ALITP_INTL_LEVELS },
   { provider: "alitp-intl", pattern: "deepseek-v4-flash-0731", levels: ALITP_INTL_LEVELS },
-  // deepseek-v4-pro also rejects minimal, and getThinkingLevels only filters "none".
+  // deepseek-v4-pro rejects "none" and "minimal"; raiseLevelToFloor lifts both to "low".
   { provider: "alitp-intl", pattern: "deepseek-v4-pro",        levels: ["low", "medium", "high", "xhigh", "max"] },
 ];
 
@@ -68,4 +75,14 @@ export function getThinkingLevels(provider, model) {
   let levels = hit?.levels || FORMAT_LEVELS[caps.thinkingFormat] || L.base;
   if (caps.thinkingCanDisable === false) levels = levels.filter((l) => l !== "none");
   return levels;
+}
+
+// Raise a level to the model's floor for strict providers; others pass through, so a
+// picker that merely omits a level (codex declares low..xhigh) still forwards "minimal".
+export function raiseLevelToFloor(provider, level, levels) {
+  if (!STRICT_LEVEL_PROVIDERS.has(provider) || !levels?.length) return level;
+  if (levels.includes(level)) return level;
+  const at = LEVEL_ORDER.indexOf(level);
+  const floor = LEVEL_ORDER.indexOf(levels[0]);
+  return at >= 0 && floor >= 0 && at < floor ? levels[0] : level;
 }

@@ -3,7 +3,7 @@
 // never hardcoded per-model here. See .docs/thinking/plan.md MATRIX VI-A.
 
 import { getCapabilitiesForModel } from "../../providers/capabilities.js";
-import { getThinkingLevels } from "../../providers/thinkingLevels.js";
+import { getThinkingLevels, raiseLevelToFloor } from "../../providers/thinkingLevels.js";
 import { PROVIDERS } from "../../providers/index.js";
 import { LEVEL_TO_BUDGET, budgetToLevel, effortToBudget, effortToThinkingLevel } from "./thinking.js";
 
@@ -232,7 +232,7 @@ function stripAll(body) {
 }
 
 // Apply unified thinking config to body in the resolved provider-native format.
-function applyFormat(fmt, body, cfg, caps, supportedLevels) {
+function applyFormat(fmt, body, cfg, caps, supportedLevels, provider) {
   const none = cfg.mode === "none";
   const canDisable = caps.thinkingCanDisable !== false;
   // Model cannot disable thinking → clamp "none" to minimal effort instead.
@@ -245,7 +245,10 @@ function applyFormat(fmt, body, cfg, caps, supportedLevels) {
       // "minimal" for most models and "low" where upstream rejects minimal
       // (alitp-intl/deepseek-v4-pro; see thinkingLevels.js).
       const level = none ? (supportedLevels?.[0] || "minimal") : toLevel(eff);
-      if (level) body.reasoning_effort = normalizeOpenAILevel(level, supportedLevels);
+      if (level) {
+        const floored = raiseLevelToFloor(provider, level, supportedLevels);
+        body.reasoning_effort = normalizeOpenAILevel(floored, supportedLevels);
+      }
       break;
     }
     case "claude-adaptive": {
@@ -369,6 +372,6 @@ export function applyThinking(targetFormat, model, body, provider = null, intent
   const fmt = resolveFormat(targetFormat, cleanModel, provider, credentials);
   const supportedLevels = getThinkingLevels(provider, cleanModel);
   stripAll(body);
-  applyFormat(fmt, body, cfg, caps, supportedLevels);
+  applyFormat(fmt, body, cfg, caps, supportedLevels, provider);
   return body;
 }

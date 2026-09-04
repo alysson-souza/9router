@@ -157,8 +157,8 @@ describe("Alibaba Token Plan provider", () => {
     const ultra = { mode: "level", level: "ultra" };
     // Upstream: "'reasoning_effort' must be one of: 'low', 'medium', 'high', 'xhigh', 'max'".
     expect(apply("deepseek-v4-pro", none)).toBe("low");
-    // An explicitly requested level is forwarded for upstream to validate.
-    expect(apply("deepseek-v4-pro", minimal)).toBe("minimal");
+    // Upstream rejects "minimal" here too, so it is raised to the floor.
+    expect(apply("deepseek-v4-pro", minimal)).toBe("low");
     expect(apply("qwen3.8-max", none)).toBe("none");
     expect(apply("qwen3.7-max", max)).toBe("xhigh");
     expect(apply("qwen3.8-max", max)).toBe("max");
